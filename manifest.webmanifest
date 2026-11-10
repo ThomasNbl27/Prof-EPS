@@ -1,0 +1,33 @@
+{
+  "name": "Prof EPS+ — Assistant pédagogique",
+  "short_name": "Prof EPS+",
+  "description": "Cahier de texte, suivi des élèves et base de compétences EPS. Fonctionne hors connexion.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0A0F1A",
+  "theme_color": "#0A0F1A",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle séance",
+      "short_name": "Séance",
+      "url": "./#seances",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Suivi des élèves",
+      "short_name": "Élèves",
+      "url": "./#eleves",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

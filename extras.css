@@ -1,0 +1,183 @@
+/* =====================================================================
+   extras.css — ajouts v1.4 : AS, évaluations, résumé, prof principal
+   S'appuie sur les jetons de design d'app.css.
+   ===================================================================== */
+
+/* ---------- Barre d'onglets : défile quand il y a beaucoup d'onglets ---------- */
+.tabbar {
+  overflow-x: auto; overflow-y: hidden;
+  grid-auto-columns: minmax(64px, 1fr);
+  scrollbar-width: none; -ms-overflow-style: none;
+  scroll-behavior: smooth;
+}
+.tabbar::-webkit-scrollbar { display: none; }
+.tab { position: relative; }
+.sidenav__links { overflow-y: auto; }
+
+/* ---------- Couleurs des 4 niveaux (comme la grille papier) ---------- */
+:root {
+  --n1: #E8553A;
+  --n2: #F0C03E;
+  --n3: #A9D27E;
+  --n4: #5DB04A;
+}
+
+/* ---------- Pastille de note ---------- */
+.note-pastille {
+  flex: none; min-width: 52px; text-align: center;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  background: var(--accent-soft); color: var(--accent);
+  font-family: var(--font-num); font-weight: 750; font-size: 16px;
+}
+.note-pastille.is-vide { background: var(--surface-2); color: var(--muted); font-weight: 600; }
+
+/* ---------- Barre de note (collante) ---------- */
+.notebar {
+  position: sticky; top: calc(var(--topbar-h) + var(--safe-t) + 6px); z-index: 20;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px; margin-bottom: 14px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r); box-shadow: var(--shadow-2);
+}
+.notebar--total { position: static; margin-top: 16px; box-shadow: var(--shadow-1); }
+.notebar__nav { display: flex; align-items: center; gap: 8px; }
+.notebar__id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.notebar__id strong { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notebar__id small { color: var(--muted); font-size: 12px; }
+.notebar__score { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.notebar__note { font-family: var(--font-num); font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; }
+.notebar__max { color: var(--muted); font-size: 14px; font-weight: 600; }
+.notebar__detail { margin-left: auto; color: var(--muted); font-size: 12.5px; text-align: right; }
+
+/* ---------- Grille d'évaluation d'un élève ---------- */
+.grille { display: flex; flex-direction: column; gap: 14px; }
+.grille__entete { display: none; }
+.grille__afl {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px; box-shadow: var(--shadow-1);
+}
+.grille__afl-titre {
+  font-size: 13.5px; font-weight: 650; line-height: 1.4; color: var(--text-2);
+  padding: 8px 10px; margin: 0 0 10px; border-radius: var(--r-xs); background: var(--surface-3);
+}
+.grille__comp + .grille__comp { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border-strong); }
+.grille__comp-titre { display: flex; justify-content: space-between; gap: 10px; font-weight: 620; font-size: 14.5px; margin-bottom: 8px; }
+.grille__pts { color: var(--muted); font-family: var(--font-num); flex: none; }
+.grille__niveaux { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+.cellule {
+  appearance: none; text-align: left; cursor: pointer; position: relative;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px 10px 14px; border-radius: var(--r-sm);
+  border: 2px solid transparent; border-left: 6px solid var(--nv);
+  background: color-mix(in srgb, var(--nv) 12%, var(--surface));
+  color: var(--text); font: inherit; font-size: 13.5px; line-height: 1.45;
+  transition: background .15s var(--ease), border-color .15s var(--ease), transform .1s var(--ease);
+}
+.cellule:active { transform: scale(.985); }
+.cellule--1 { --nv: var(--n1); }
+.cellule--2 { --nv: var(--n2); }
+.cellule--3 { --nv: var(--n3); }
+.cellule--4 { --nv: var(--n4); }
+.cellule__nom { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
+.cellule__pts { font-family: var(--font-num); font-size: 12px; font-weight: 700; color: var(--muted); }
+.cellule.is-on {
+  background: color-mix(in srgb, var(--nv) 42%, var(--surface));
+  border-color: var(--nv);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nv) 28%, transparent);
+}
+.cellule.is-on .cellule__nom,
+.cellule.is-on .cellule__pts { color: var(--text); }
+.cellule.is-on::after {
+  content: "✓"; position: absolute; top: 6px; right: 10px;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 800;
+  background: var(--nv); color: #1a1a1a;
+}
+
+@media (min-width: 760px) {
+  .grille__entete {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    position: sticky; top: calc(var(--topbar-h) + var(--safe-t) + 120px); z-index: 5;
+  }
+  .grille__entete .niv {
+    padding: 8px; text-align: center; font-size: 12.5px; font-weight: 700; color: #1a1a1a; border-radius: var(--r-xs);
+  }
+  .niv--1 { background: var(--n1); color: #fff !important; }
+  .niv--2 { background: var(--n2); }
+  .niv--3 { background: var(--n3); }
+  .niv--4 { background: var(--n4); color: #fff !important; }
+  .grille__niveaux { grid-template-columns: repeat(4, 1fr); }
+  .cellule__nom { display: none; }
+  .cellule { min-height: 118px; }
+}
+
+/* ---------- Constructeur de grille ---------- */
+.bloc-afl { border-left: 4px solid var(--accent); }
+.bloc-comp {
+  padding: 12px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.pointsbox { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.pointsbox .input { width: 84px; min-height: 38px; text-align: center; }
+.pointsbox--petit .input { width: 64px; min-height: 32px; font-size: 13px; }
+.niveau-champ { border-left: 6px solid var(--nv); border-radius: var(--r-xs); padding-left: 10px; }
+.niveau-champ--1 { --nv: var(--n1); }
+.niveau-champ--2 { --nv: var(--n2); }
+.niveau-champ--3 { --nv: var(--n3); }
+.niveau-champ--4 { --nv: var(--n4); }
+.niveau-champ__tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+
+/* ---------- Présences AS ---------- */
+.pres { text-align: left; }
+.pres__box {
+  flex: none; width: 28px; height: 28px; border-radius: 8px;
+  border: 2px solid var(--border-strong); background: var(--surface);
+  display: grid; place-items: center; color: transparent;
+  transition: background .12s var(--ease), border-color .12s var(--ease);
+}
+.pres__box svg { width: 16px; height: 16px; stroke-width: 3; }
+.pres[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft); }
+.pres[aria-pressed="true"] .pres__box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pres:disabled { opacity: .55; cursor: default; }
+
+/* ---------- Dispenses : aperçu de la photo ---------- */
+.photo-apercu { margin: 6px 0 10px; }
+.photo-apercu img { width: 100%; max-height: 220px; object-fit: contain; border-radius: var(--r-sm); background: var(--surface-2); border: 1px solid var(--border); }
+
+/* ---------- Divers ---------- */
+.card--actif { border-color: var(--accent-line); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* ---------- Évaluation : élève absent / dispensé ---------- */
+.grille.is-masque { opacity: .35; pointer-events: none; filter: grayscale(.6); }
+
+/* ---------- Statistiques de classe ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stats__cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; border-radius: var(--r-sm); background: var(--surface-2);
+}
+.stats__cell span { font-size: 11px; color: var(--muted); font-weight: 600; text-align: center; }
+.stats__cell b { font-family: var(--font-num); font-size: 17px; color: var(--accent); }
+.barre { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.barre__nom { width: 56px; color: var(--muted); flex: none; }
+.barre__piste { flex: 1; height: 12px; border-radius: 6px; background: var(--surface-3); overflow: hidden; }
+.barre__rempli { display: block; height: 100%; border-radius: 6px; background: var(--accent); min-width: 2px; }
+.barre__n { width: 22px; text-align: right; font-family: var(--font-num); }
+
+/* ---------- Mode terrain : gros boutons, textes agrandis ---------- */
+.terrain body { font-size: 18px; }
+.terrain .btn { min-height: 56px; font-size: 17px; padding-inline: 20px; }
+.terrain .btn--sm { min-height: 48px; font-size: 16px; }
+.terrain .iconbtn { width: 52px; height: 52px; }
+.terrain .counter__btn { width: 60px; height: 60px; }
+.terrain .counter__val { font-size: 28px; min-width: 44px; }
+.terrain .item { padding-block: 16px; }
+.terrain .item__title { font-size: 18px; }
+.terrain .chip { min-height: 48px; font-size: 16px; padding-inline: 18px; }
+.terrain .pres__box { width: 38px; height: 38px; }
+.terrain .cellule { font-size: 16px; padding: 14px 14px 14px 16px; }
+.terrain .cellule__nom, .terrain .cellule__pts { font-size: 14px; }
+.terrain .notebar__note { font-size: 38px; }
+.terrain .input, .terrain .textarea, .terrain .select { min-height: 52px; font-size: 17px; }
+.terrain .tab { min-height: 64px; }
