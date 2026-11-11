@@ -181,3 +181,17 @@
 .terrain .notebar__note { font-size: 38px; }
 .terrain .input, .terrain .textarea, .terrain .select { min-height: 52px; font-size: 17px; }
 .terrain .tab { min-height: 64px; }
+
+/* ---------- Barème en intervalles ---------- */
+.niveau-champ__pts { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--muted); }
+.input--pts { width: 66px; min-height: 34px; text-align: center; font-size: 13.5px; padding-inline: 6px; }
+.grille__points { margin-top: 8px; }
+.grille__points:empty { display: none; }
+.reglage-pts {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+  border-radius: var(--r-sm); background: var(--surface-2); border: 1px dashed var(--border-strong);
+}
+.reglage-pts__titre { font-size: 12.5px; font-weight: 650; color: var(--text-2); }
+.reglage-pts__controles { display: flex; align-items: center; gap: 10px; }
+.reglage-pts__controles .input { width: 96px; text-align: center; font-family: var(--font-num); font-size: 18px; font-weight: 700; min-height: 44px; }
+.terrain .reglage-pts__controles .input { min-height: 56px; font-size: 22px; }

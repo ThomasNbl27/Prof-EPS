@@ -4,7 +4,7 @@
 (function (global) {
   "use strict";
 
-  var VERSION = "1.5.0";
+  var VERSION = "1.5.1";
   var vueCourante = "accueil";
 
   /** Onglets affichés. « Prof principal » n'apparaît que si l'option est cochée. */

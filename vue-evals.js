@@ -34,8 +34,42 @@
     return [1, 2, 3, 4].map(function (k) { return arrondir(points * k / 4); });
   }
 
+  /** Remplit les bornes selon le type de barème : « fixe » (une valeur) ou « intervalle » (tranches contiguës). */
+  function remplirBareme(c) {
+    var P = nombre(c.points);
+    c.ptsMin = []; c.ptsMax = [];
+    [1, 2, 3, 4].forEach(function (k) {
+      if (c.bareme === "intervalle") {
+        c.ptsMin.push(arrondir(P * (k - 1) / 4));
+        c.ptsMax.push(arrondir(P * k / 4));
+      } else {
+        c.ptsMin.push(arrondir(P * k / 4));
+        c.ptsMax.push(arrondir(P * k / 4));
+      }
+    });
+    c.pts = c.ptsMax.slice();
+  }
+
+  /** Anciennes grilles : une valeur par niveau -> barème fixe. */
+  function normaliserCompetence(c) {
+    if (!c.ptsMin || c.ptsMin.length !== 4) {
+      var base = c.pts && c.pts.length === 4 ? c.pts.map(nombre) : ptsAuto(nombre(c.points));
+      c.ptsMin = base.slice(); c.ptsMax = base.slice();
+    }
+    if (!c.bareme) c.bareme = "fixe";
+    c.pts = c.ptsMax.map(nombre);
+    return c;
+  }
+
+  /** « 1 » ou « 0 à 1 » selon que le niveau est fixe ou à intervalle. */
+  function libelleBornes(b) {
+    return b.max > b.min ? Store.formaterNote(b.min) + " à " + Store.formaterNote(b.max) : Store.formaterNote(b.min);
+  }
+
   function nouvelleCompetence() {
-    return { id: U.uid(), libelle: "", points: 2, pts: ptsAuto(2), manuel: false, niveaux: ["", "", "", ""] };
+    var c = { id: U.uid(), libelle: "", points: 2, bareme: "fixe", manuel: false, niveaux: ["", "", "", ""] };
+    remplirBareme(c);
+    return c;
   }
 
   function nouvelAFL() {
@@ -262,7 +296,7 @@
           var copie = Store.evaluations.ajouter({
             titre: corps.querySelector("#dup-titre").value.trim() || ev.titre, classe: classe,
             activite: ev.activite, trimestre: ev.trimestre, date: U.aujourdhui(), coef: ev.coef,
-            afl: copierAFL(ev.afl), resultats: {}, statuts: {}
+            afl: copierAFL(ev.afl), resultats: {}, statuts: {}, points: {}
           });
           fermer();
           idCourant = copie.id;
@@ -298,6 +332,7 @@
           var g = types[Number(el.getAttribute("data-type"))];
           if (!g || !brouillon) return;
           brouillon.afl = copierAFL(g.afl);
+          brouillon.afl.forEach(function (a) { (a.competences || []).forEach(normaliserCompetence); });
           if (!String(brouillon.titre).trim()) brouillon.titre = g.nom || "";
           if (!String(brouillon.activite).trim()) brouillon.activite = g.activite || "";
           fermer();
@@ -335,9 +370,9 @@
       doc.section(a.libelle || "AFL " + (i + 1));
       (a.competences || []).forEach(function (c) {
         var niveau = res[c.id];
-        var pts = c.pts && c.pts.length === 4 ? c.pts : ptsAuto(nombre(c.points));
+        var obtenus = Store.pointsCompetence(ev, eleve.id, c);
         var texte = niveau >= 1 && niveau <= 4
-          ? NIVEAUX[niveau - 1].nom + " - " + Store.formaterNote(nombre(pts[niveau - 1])) + " sur " + Store.formaterNote(nombre(c.points)) + " points\n" + ((c.niveaux && c.niveaux[niveau - 1]) || "")
+          ? NIVEAUX[niveau - 1].nom + " - " + Store.formaterNote(obtenus) + " sur " + Store.formaterNote(nombre(c.points)) + " points\n" + ((c.niveaux && c.niveaux[niveau - 1]) || "")
           : "Non évalué";
         doc.champ((c.libelle || "Compétence"), texte);
       });
@@ -356,6 +391,8 @@
     if (!ev.resultats) ev.resultats = {};
     if (!ev.resultats[eleve.id]) ev.resultats[eleve.id] = {};
     if (!ev.statuts) ev.statuts = {};
+    if (!ev.points) ev.points = {};
+    if (!ev.points[eleve.id]) ev.points[eleve.id] = {};
     var res = ev.resultats[eleve.id];
     var statut = ev.statuts[eleve.id] || "";
 
@@ -384,7 +421,6 @@
           return '<section class="grille__afl">' +
             '<h3 class="grille__afl-titre">' + U.echapper(a.libelle || "AFL " + (i + 1)) + "</h3>" +
             (a.competences || []).map(function (c) {
-              var pts = c.pts && c.pts.length === 4 ? c.pts : ptsAuto(nombre(c.points));
               return '<div class="grille__comp" data-comp="' + c.id + '">' +
                 '<div class="grille__comp-titre"><span>' + U.echapper(c.libelle || "Compétence") + "</span>" +
                   '<b class="grille__pts">/' + Store.formaterNote(nombre(c.points)) + "</b></div>" +
@@ -394,10 +430,12 @@
                       '" data-niveau="' + n.n + '" data-c="' + c.id + '" aria-pressed="' + (res[c.id] === n.n) + '">' +
                       '<span class="cellule__nom">' + n.nom + "</span>" +
                       '<span class="cellule__txt">' + U.echapper((c.niveaux && c.niveaux[n.n - 1]) || "—") + "</span>" +
-                      '<span class="cellule__pts">' + Store.formaterNote(nombre(pts[n.n - 1])) + " pt" + (nombre(pts[n.n - 1]) > 1 ? "s" : "") + "</span>" +
+                      '<span class="cellule__pts">' + libelleBornes(Store.bornesNiveau(c, n.n)) + " pt" + (Store.bornesNiveau(c, n.n).max > 1 ? "s" : "") + "</span>" +
                     "</button>";
                   }).join("") +
-                "</div></div>";
+                "</div>" +
+                '<div class="grille__points" data-ptsrow="' + c.id + '">' + ligneReglagePoints(ev, eleve.id, c) + "</div>" +
+              "</div>";
             }).join("") +
           "</section>";
         }).join("") +
@@ -420,15 +458,63 @@
       var cId = el.getAttribute("data-c");
       // Un seul niveau par compétence : en choisir un autre retire le précédent ; retoucher le même l'annule.
       if (res[cId] === niveau) delete res[cId]; else res[cId] = niveau;
+      delete ev.points[eleve.id][cId];          // nouvelle valeur par défaut pour ce niveau
       var ligne = el.closest(".grille__comp");
       U.$$("[data-niveau]", ligne).forEach(function (b) {
         var actif = res[cId] === Number(b.getAttribute("data-niveau"));
         b.classList.toggle("is-on", actif);
         b.setAttribute("aria-pressed", actif ? "true" : "false");
       });
-      Store.evaluations.modifier(ev.id, { resultats: ev.resultats });
+      Store.evaluations.modifier(ev.id, { resultats: ev.resultats, points: ev.points });
+      var rangee = ligne.querySelector("[data-ptsrow]");
+      var compet = trouverCompetenceEval(ev, cId);
+      if (rangee && compet) rangee.innerHTML = ligneReglagePoints(ev, eleve.id, compet);
       U.vibrer(10);
       majNote();
+    });
+
+    /* Réglage précis des points quand le niveau est un intervalle */
+    function fixerPoints(cId, valeur, reecrire) {
+      var compet = trouverCompetenceEval(ev, cId);
+      var niveau = res[cId];
+      if (!compet || !niveau) return;
+      var b = Store.bornesNiveau(compet, niveau);
+      var v = Math.min(b.max, Math.max(b.min, valeur));
+      ev.points[eleve.id][cId] = v;
+      Store.evaluations.modifier(ev.id, { points: ev.points });
+      if (reecrire) {
+        var champ = conteneur.querySelector('[data-pts-input="' + cId + '"]');
+        if (champ) champ.value = String(arrondir(v)).replace(".", ",");
+      }
+      majNote();
+    }
+    U.sur(conteneur, "click", "[data-pts-pas]", function (e, el) {
+      var cId = el.getAttribute("data-c");
+      var compet = trouverCompetenceEval(ev, cId);
+      if (!compet || !res[cId]) return;
+      var courant = Store.pointsCompetence(ev, eleve.id, compet);
+      fixerPoints(cId, arrondir(courant + Number(el.getAttribute("data-pts-pas"))), true);
+      U.vibrer(8);
+    });
+    U.sur(conteneur, "click", "[data-pts-borne]", function (e, el) {
+      var cId = el.getAttribute("data-c");
+      var compet = trouverCompetenceEval(ev, cId);
+      if (!compet || !res[cId]) return;
+      var b = Store.bornesNiveau(compet, res[cId]);
+      var voulue = el.getAttribute("data-pts-borne");
+      fixerPoints(cId, voulue === "min" ? b.min : voulue === "max" ? b.max : Store.valeurParDefaut(b), true);
+    });
+    conteneur.addEventListener("input", function (e) {
+      var cId = e.target.getAttribute && e.target.getAttribute("data-pts-input");
+      if (!cId) return;
+      var v = parseFloat(String(e.target.value).replace(",", "."));
+      if (!isNaN(v)) fixerPoints(cId, v, false);
+    });
+    conteneur.addEventListener("change", function (e) {
+      var cId = e.target.getAttribute && e.target.getAttribute("data-pts-input");
+      if (!cId) return;
+      var compet = trouverCompetenceEval(ev, cId);
+      if (compet && res[cId]) fixerPoints(cId, Store.pointsCompetence(ev, eleve.id, compet), true);
     });
 
     U.sur(conteneur, "click", "[data-statut]", function (e, el) {
@@ -461,6 +547,7 @@
     if (id) {
       var ev = Store.evaluations.trouver(id);
       brouillon = JSON.parse(JSON.stringify(ev));
+      (brouillon.afl || []).forEach(function (a) { (a.competences || []).forEach(normaliserCompetence); });
     } else {
       brouillon = {
         titre: "", classe: classeActive || "", activite: "",
@@ -537,20 +624,38 @@
       else if (champ === "points") {
         c.points = nombre(cible.value);
         if (!c.manuel) {
-          c.pts = ptsAuto(c.points);
+          remplirBareme(c);
           [1, 2, 3, 4].forEach(function (k) {
-            var champPts = conteneur.querySelector('[data-champ="pts"][data-c="' + c.id + '"][data-n="' + k + '"]');
-            if (champPts) champPts.value = c.pts[k - 1];
+            var cmin = conteneur.querySelector('[data-champ="pmin"][data-c="' + c.id + '"][data-n="' + k + '"]');
+            var cmax = conteneur.querySelector('[data-champ="pmax"][data-c="' + c.id + '"][data-n="' + k + '"]');
+            if (cmin) cmin.value = c.ptsMin[k - 1];
+            if (cmax) cmax.value = c.ptsMax[k - 1];
           });
         }
         majTotal(conteneur);
-      } else if (champ === "pts") {
+      } else if (champ === "pmin" || champ === "pmax") {
         c.manuel = true;
-        c.pts[Number(cible.getAttribute("data-n")) - 1] = nombre(cible.value);
+        var idx = Number(cible.getAttribute("data-n")) - 1;
+        if (champ === "pmin") {
+          c.ptsMin[idx] = nombre(cible.value);
+          if (c.bareme === "fixe") c.ptsMax[idx] = nombre(cible.value);     // une seule valeur
+        } else {
+          c.ptsMax[idx] = cible.value === "" ? c.ptsMin[idx] : nombre(cible.value);
+        }
+        c.pts = c.ptsMax.map(nombre);
       }
     });
 
     /* --- Actions structurelles --- */
+    U.sur(conteneur, "click", "[data-bareme]", function (e, el) {
+      var a = trouverAFL(el.getAttribute("data-a"));
+      var c = a && trouverCompetence(a, el.getAttribute("data-c"));
+      if (!c) return;
+      c.bareme = el.getAttribute("data-bareme");
+      c.manuel = false;
+      remplirBareme(c);            // le choix remplit les valeurs ; on peut ensuite les modifier
+      rafraichirSurPlace();
+    });
     U.sur(conteneur, "click", "[data-bibliotheque]", function () { ouvrirBibliotheque(); });
     U.sur(conteneur, "click", "[data-ajout-afl]", function () { b.afl.push(nouvelAFL()); rafraichirSurPlace(); });
     U.sur(conteneur, "click", "[data-suppr-afl]", function (e, el) {
@@ -576,6 +681,35 @@
     });
     U.sur(conteneur, "click", "[data-annuler]", function () { brouillon = null; aller(edition ? "detail" : "liste"); });
     U.sur(conteneur, "click", "[data-enregistrer]", function () { enregistrer(edition); });
+  }
+
+  function trouverCompetenceEval(ev, id) {
+    var trouvee = null;
+    (ev.afl || []).forEach(function (a) { (a.competences || []).forEach(function (c) { if (c.id === id) trouvee = c; }); });
+    return trouvee;
+  }
+
+  /** Ligne « points précis » : visible seulement si le niveau choisi est un intervalle. */
+  function ligneReglagePoints(ev, idEleve, c) {
+    var niveau = ev.resultats && ev.resultats[idEleve] && ev.resultats[idEleve][c.id];
+    if (!niveau) return "";
+    var b = Store.bornesNiveau(c, niveau);
+    var obtenus = Store.pointsCompetence(ev, idEleve, c);
+    if (b.max <= b.min) {
+      return '<span class="small muted">Barème fixe : ' + Store.formaterNote(obtenus) + " point" + (obtenus > 1 ? "s" : "") + "</span>";
+    }
+    return '<div class="reglage-pts">' +
+      '<span class="reglage-pts__titre">Points entre ' + Store.formaterNote(b.min) + " et " + Store.formaterNote(b.max) + "</span>" +
+      '<div class="reglage-pts__controles">' +
+        '<button class="iconbtn" type="button" data-pts-pas="-0.25" data-c="' + c.id + '" aria-label="Retirer un quart de point">' + UI.icone("moins") + "</button>" +
+        '<input class="input" type="text" inputmode="decimal" data-pts-input="' + c.id + '" value="' + String(arrondir(obtenus)).replace(".", ",") + '" aria-label="Points attribués">' +
+        '<button class="iconbtn" type="button" data-pts-pas="0.25" data-c="' + c.id + '" aria-label="Ajouter un quart de point">' + UI.icone("plus") + "</button>" +
+      "</div>" +
+      '<div class="chips">' +
+        '<button class="chip" type="button" data-pts-borne="min" data-c="' + c.id + '">Bas (' + Store.formaterNote(b.min) + ")</button>" +
+        '<button class="chip" type="button" data-pts-borne="mid" data-c="' + c.id + '">Milieu</button>' +
+        '<button class="chip" type="button" data-pts-borne="max" data-c="' + c.id + '">Haut (' + Store.formaterNote(b.max) + ")</button>" +
+      "</div></div>";
   }
 
   function trouverAFL(id) { return (brouillon.afl || []).filter(function (a) { return a.id === id; })[0]; }
@@ -605,7 +739,8 @@
   }
 
   function competenceHTML(a, c, k) {
-    var pts = c.pts && c.pts.length === 4 ? c.pts : ptsAuto(nombre(c.points));
+    normaliserCompetence(c);
+    var intervalle = c.bareme === "intervalle";
     return '<div class="bloc-comp stack stack--sm">' +
       '<div class="row row--between"><span class="small muted" style="font-weight:650">Compétence ' + (k + 1) + "</span>" +
         '<button class="iconbtn" type="button" data-suppr-comp="' + c.id + '" data-a="' + a.id + '" aria-label="Supprimer cette compétence">' + UI.icone("fermer") + "</button></div>" +
@@ -615,11 +750,28 @@
         '<label class="pointsbox"><span>Points</span><input class="input" type="number" inputmode="decimal" min="0" step="0.5" value="' + U.echapper(c.points) +
           '" data-champ="points" data-a="' + a.id + '" data-c="' + c.id + '"></label>' +
       "</div>" +
+      '<div class="field"><span class="field__label">Barème des niveaux</span>' +
+        '<div class="chips">' +
+          '<button class="chip" type="button" data-bareme="fixe" data-a="' + a.id + '" data-c="' + c.id + '" aria-pressed="' + (!intervalle) + '">Valeur fixe</button>' +
+          '<button class="chip" type="button" data-bareme="intervalle" data-a="' + a.id + '" data-c="' + c.id + '" aria-pressed="' + intervalle + '">Intervalles</button>' +
+        "</div>" +
+        '<p class="field__hint">' + (intervalle
+          ? "Chaque niveau a une fourchette (ex. 0 à 1) : vous choisirez les points exacts élève par élève. Mettez deux valeurs identiques pour fixer un niveau."
+          : "Chaque niveau rapporte un nombre de points précis. Choisir un barème remplit les valeurs, vous pouvez ensuite les modifier.") + "</p>" +
+      "</div>" +
       NIVEAUX.map(function (n) {
+        var i = n.n - 1;
         return '<div class="niveau-champ niveau-champ--' + n.n + '">' +
           '<div class="niveau-champ__tete"><span>' + n.nom + "</span>" +
-            '<label class="pointsbox pointsbox--petit"><input class="input" type="number" inputmode="decimal" min="0" step="0.25" value="' + U.echapper(pts[n.n - 1]) +
-              '" data-champ="pts" data-a="' + a.id + '" data-c="' + c.id + '" data-n="' + n.n + '"><span>pts</span></label></div>' +
+            '<span class="niveau-champ__pts">' +
+              (intervalle ? '<span>de</span>' : "") +
+              '<input class="input input--pts" type="number" inputmode="decimal" min="0" step="0.25" value="' + U.echapper(c.ptsMin[i]) +
+                '" data-champ="pmin" data-a="' + a.id + '" data-c="' + c.id + '" data-n="' + n.n + '" aria-label="' + (intervalle ? "Points minimum" : "Points") + '">' +
+              (intervalle
+                ? '<span>à</span><input class="input input--pts" type="number" inputmode="decimal" min="0" step="0.25" value="' + U.echapper(c.ptsMax[i]) +
+                    '" data-champ="pmax" data-a="' + a.id + '" data-c="' + c.id + '" data-n="' + n.n + '" aria-label="Points maximum">'
+                : "") +
+              "<span>pts</span></span></div>" +
           '<textarea class="textarea" rows="3" data-champ="niveau" data-n="' + n.n + '" data-a="' + a.id + '" data-c="' + c.id + '" placeholder="Descriptif du niveau ' + n.n + '">' +
             U.echapper((c.niveaux && c.niveaux[n.n - 1]) || "") + "</textarea></div>";
       }).join("") +
@@ -686,7 +838,7 @@
       titre: b.titre.trim(), classe: b.classe.trim(), activite: (b.activite || "").trim(),
       trimestre: Number(b.trimestre) || 1, date: b.date || U.aujourdhui(),
       coef: isNaN(parseFloat(b.coef)) ? 1 : Math.max(0, parseFloat(b.coef)),
-      afl: b.afl, resultats: b.resultats || {}, statuts: b.statuts || {}
+      afl: b.afl, resultats: b.resultats || {}, statuts: b.statuts || {}, points: b.points || {}
     };
     if (b.enregistrerType) {
       Store.grillesTypes.ajouter({ nom: donnees.titre, activite: donnees.activite, afl: copierAFL(donnees.afl) });

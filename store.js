@@ -288,6 +288,41 @@
       return m >= 9 ? 1 : m <= 3 ? 2 : 3;
     },
 
+    /** Bornes de points d'un niveau (1 à 4) : valeur fixe si min = max, intervalle sinon. */
+    bornesNiveau: function (c, niveau) {
+      var i = niveau - 1;
+      var P = Number(c.points) || 0;
+      var min, max;
+      if (c.ptsMin && c.ptsMax && c.ptsMin.length === 4 && c.ptsMax.length === 4) {
+        min = Number(c.ptsMin[i]);
+        max = c.ptsMax[i] === "" || c.ptsMax[i] === null ? min : Number(c.ptsMax[i]);
+      } else {
+        // Anciennes grilles : une seule valeur par niveau.
+        min = max = c.pts && c.pts.length === 4 ? Number(c.pts[i]) : P * niveau / 4;
+      }
+      if (isNaN(min)) min = 0;
+      if (isNaN(max) || max < min) max = min;
+      return { min: min, max: max };
+    },
+
+    /** Valeur proposée par défaut dans un intervalle : le milieu, au quart de point près. */
+    valeurParDefaut: function (b) {
+      if (b.max <= b.min) return b.min;
+      var m = Math.round((b.min + b.max) / 2 * 4) / 4;
+      return Math.min(b.max, Math.max(b.min, m));
+    },
+
+    /** Points attribués à un élève sur une compétence (null si aucun niveau choisi). */
+    pointsCompetence: function (ev, idEleve, c) {
+      var niveau = ev.resultats && ev.resultats[idEleve] && ev.resultats[idEleve][c.id];
+      if (!(niveau >= 1 && niveau <= 4)) return null;
+      var b = Store.bornesNiveau(c, niveau);
+      if (b.max <= b.min) return b.min;
+      var precis = ev.points && ev.points[idEleve] && ev.points[idEleve][c.id];
+      if (typeof precis === "number" && !isNaN(precis)) return Math.min(b.max, Math.max(b.min, precis));
+      return Store.valeurParDefaut(b);
+    },
+
     /**
      * Note d'un élève pour une évaluation.
      * Chaque compétence rapporte les points du niveau choisi (1 à 4).
@@ -302,11 +337,10 @@
           var pts = Number(c.points) || 0;
           total += pts;
           nb++;
-          var niveau = res[c.id];
-          if (niveau >= 1 && niveau <= 4) {
+          var obtenus = Store.pointsCompetence(ev, idEleve, c);
+          if (obtenus !== null) {
             evaluees++;
-            var valeurs = c.pts && c.pts.length === 4 ? c.pts : [0.25, 0.5, 0.75, 1].map(function (f) { return f * pts; });
-            gagnes += Number(valeurs[niveau - 1]) || 0;
+            gagnes += obtenus;
           }
         });
       });
